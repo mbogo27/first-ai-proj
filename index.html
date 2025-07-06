@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Profiler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        #app {
+            width: 100%;
+            max-width: 900px; /* Increased max-width for grid layout */
+            margin-top: 4rem;
+        }
+        .parse-button {
+            background-color: #6b7280;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .parse-button:hover {
+            background-color: #4b5563;
+            transform: translateY(-1px);
+        }
+        .parse-button:active {
+            background-color: #374151;
+            transform: translateY(0);
+        }
+        .parse-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        input[type="file"]::file-selector-button {
+            background-color: #e5e7eb;
+            color: #374151;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #d1d5db;
+        }
+
+        /* Styles for the resume cards */
+        .resume-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e2e8f0; /* subtle border */
+        }
+
+        .resume-card-header {
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .resume-card-title {
+            font-size: 1.5rem; /* 24px */
+            font-weight: 700;
+            color: #1f2937; /* Gray-900 */
+        }
+
+        .resume-card-subtitle {
+            font-size: 0.95rem;
+            color: #4b5563; /* Gray-600 */
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #374151; /* Gray-700 */
+        }
+        .detail-item strong {
+            color: #1f2937; /* Darker for labels */
+        }
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .skill-tag {
+            background-color: #e0f2fe; /* Light blue */
+            color: #0c4a6e; /* Darker blue */
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px; /* Pill shape */
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .section-heading {
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .work-history-item, .education-item {
+            background-color: #f9fafb; /* Lighter background for sub-items */
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            border: 1px solid #f3f4f6;
+            margin-bottom: 0.5rem;
+        }
+        .work-history-item:last-child, .education-item:last-child {
+            margin-bottom: 0;
+        }
+        .error-card {
+            background-color: #fee2e2; /* Red-100 */
+            border-color: #ef4444; /* Red-500 */
+            color: #b91c1c; /* Red-700 */
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="flex flex-col items-center">
+        <h1 class="text-5xl font-bold text-gray-800 mb-2">AI Resume Profiler by Weyn Tech</h1>
+        <p class="text-lg text-gray-600 mb-8">Upload up to 5 resumes to extract candidate insights instantly</p>
+
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full mb-8">
+            <div class="flex items-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-700 mr-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <h2 class="text-2xl font-semibold text-gray-800">Upload Resumes</h2>
+            </div>
+
+            <div class="mb-4">
+                <label for="resume-files" class="block text-gray-700 text-sm font-medium mb-2">Upload Resume(s) (.pdf or .docx, max 5)</label>
+                <input
+                    type="file"
+                    id="resume-files"
+                    ref="fileInput"
+                    @change="handleFileChange"
+                    accept=".pdf,.doc,.docx"
+                    multiple class="block w-full text-sm text-gray-500
+                           file:mr-4 file:py-2 file:px-4
+                           file:rounded-md file:border-0
+                           file:text-sm file:font-semibold
+                           file:bg-gray-200 file:text-gray-700
+                           hover:file:bg-gray-300"
+                />
+            </div>
+
+            <div v-if="selectedFiles.length > 0" class="mb-6 text-gray-600 text-sm">
+                <p class="font-medium">Selected files ({{ selectedFiles.length }}/5):</p>
+                <ul class="list-disc list-inside ml-4 mt-2">
+                    <li v-for="file in selectedFiles" :key="file.name">{{ file.name }}</li>
+                </ul>
+            </div>
+            <div v-else class="mb-6 text-gray-600 text-sm">
+                No files chosen.
+            </div>
+
+            <button
+                @click="parseResumes"
+                :disabled="selectedFiles.length === 0 || selectedFiles.length > 5 || isLoading"
+                class="parse-button w-full flex items-center justify-center"
+            >
+                <span v-if="isLoading" class="flex items-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Parsing Resumes...
+                </span>
+                <span v-else>Parse Resumes</span>
+            </button>
+        </div>
+
+        <div v-if="globalError" class="mt-8 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg w-full mb-8" role="alert">
+            <p class="font-bold">Error:</p>
+            <p>{{ globalError }}</p>
+        </div>
+
+        <div v-if="parsedOutput && parsedOutput.length > 0" class="w-full">
+            <h3 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Parsed Resume Insights</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div
+                    v-for="(resume, index) in parsedOutput"
+                    :key="resume.fileName || index"
+                    :class="['resume-card', { 'error-card': resume.error }]"
+                >
+                    <template v-if="!resume.error">
+                        <div class="resume-card-header">
+                            <h4 class="resume-card-title">{{ resume.name || 'N/A' }}</h4>
+                            <p class="resume-card-subtitle">{{ resume.fileName || `Resume ${index + 1}` }}</p>
+                        </div>
+
+                        <div class="detail-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-500"><path d="M2.502 6.645A2.25 2.25 0 014.25 4.5h11.5a2.25 2.25 0 011.748 2.145L16.25 8.25a.75.75 0 000 1.5l.375.025a1.5 1.5 0 011.493 1.63L17.25 15a.75.75 0 00.75.75h1.5a.75.75 0 000-1.5H18v-2.25a2.25 2.25 0 00-2.25-2.25H4.25A2.25 2.25 0 002 10.5v2.25H.5a.75.75 0 000 1.5h1.5a.75.75 0 00.75-.75v-2.25a1.5 1.5 0 011.493-1.63l.375-.025a.75.75 0 000-1.5L2.502 6.645zM12.75 10.5a.75.75 0 00-1.5 0v3a.75.75 0 001.5 0v-3zM8.75 10.5a.75.75 0 00-1.5 0v3a.75.75 0 001.5 0v-3z"></path></svg>
+                            <span><strong>Experience:</strong> {{ resume.yearsOfExperience !== undefined ? `${resume.yearsOfExperience} Years` : 'N/A' }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-500"><path d="M2 3.5A1.5 1.5 0 013.5 2h13A1.5 1.5 0 0118 3.5v13a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 16.5v-13z"></path><path fill-rule="evenodd" d="M5.584 10.601a.75.75 0 01.127 1.05l-2.47 3.097a.75.75 0 01-1.057.124l-1.5-1.5a.75.75 0 011.06-1.06l1.096 1.096 2.05-2.563a.75.75 0 011.05-.127zM11.75 13a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h2.5a.75.75 0 01.75.75zM14.25 10.5a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h5a.75.75 0 01.75.75zM14.25 8a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h5a.75.75 0 01.75.75z" clip-rule="evenodd"></path></svg>
+                            <span><strong>Email:</strong> <a :href="'mailto:' + resume.email" class="text-blue-600 hover:underline">{{ resume.email || 'N/A' }}</a></span>
+                        </div>
+                        <div class="detail-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-500"><path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h13A1.5 1.5 0 0118 3.5v13a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 16.5v-13z"></path><path d="M5.75 6.75a.75.75 0 000 1.5h8.5a.75.75 0 000-1.5h-8.5zM5.75 10.25a.75.75 0 000 1.5h8.5a.75.75 0 000-1.5h-8.5zM5.75 13.75a.75.75 0 000 1.5h8.5a.75.75 0 000-1.5h-8.5z" clip-rule="evenodd"></path></svg>
+                            <span><strong>Phone:</strong> <a :href="'tel:' + resume.phone" class="text-blue-600 hover:underline">{{ resume.phone || 'N/A' }}</a></span>
+                        </div>
+
+                        <div v-if="resume.keySkills && resume.keySkills.length > 0">
+                            <p class="section-heading">Key Skills:</p>
+                            <div class="skills-list">
+                                <span v-for="skill in resume.keySkills" :key="skill" class="skill-tag">{{ skill }}</span>
+                            </div>
+                        </div>
+
+                        <div v-if="resume.educationSummary">
+                            <p class="section-heading">Education:</p>
+                            <div class="text-sm text-gray-700">{{ resume.educationSummary }}</div>
+                        </div>
+
+                        <div v-if="resume.workHistory && resume.workHistory.length > 0">
+                            <p class="section-heading">Work History:</p>
+                            <div class="text-sm">
+                                <div v-for="(job, jobIndex) in resume.workHistory" :key="jobIndex" class="work-history-item">
+                                    <p class="font-semibold">{{ job.position || 'N/A' }} at {{ job.company || 'N/A' }}</p>
+                                    <p class="text-gray-600 text-xs mb-1">{{ job.duration || 'N/A' }}</p>
+                                    <p class="text-gray-700 text-sm">{{ job.description || '' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else>
+                            <p class="text-sm text-gray-500">No detailed work history available.</p>
+                        </div>
+
+                    </template>
+                    <template v-else>
+                        <div class="resume-card-header">
+                            <h4 class="resume-card-title text-red-700">Error Processing: {{ resume.fileName || `Resume ${index + 1}` }}</h4>
+                            <p class="resume-card-subtitle text-red-500">Could not extract insights.</p>
+                        </div>
+                        <p class="text-red-700 text-sm"><strong>Details:</strong> {{ resume.error || 'Unknown error.' }}</p>
+                        <details v-if="resume.rawGeminiResponse" class="mt-2 text-sm text-gray-600">
+                            <summary class="cursor-pointer text-blue-600 hover:underline">Show Raw Gemini Response</summary>
+                            <pre class="whitespace-pre-wrap break-words bg-gray-100 p-2 rounded-md mt-1">{{ resume.rawGeminiResponse }}</pre>
+                        </details>
+                    </template>
+                </div>
+            </div>
+        </div>
+        <div v-else-if="!isLoading && !globalError && selectedFiles.length > 0 && parsedOutput === null" class="mt-8 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded-lg w-full text-center">
+            Upload resumes and click 'Parse Resumes' to see insights.
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    selectedFiles: [],
+                    parsedOutput: null,
+                    isLoading: false,
+                    globalError: null,
+                    // IMPORTANT: Change this to '/' for relative path on Koyeb
+                    apiEndpoint: '/',
+                };
+            },
+            methods: {
+                handleFileChange(event) {
+                    this.globalError = null; // Clear global errors
+                    this.parsedOutput = null; // Clear previous output
+                    const files = Array.from(event.target.files);
+                    if (files.length > 5) {
+                        this.globalError = "You can upload a maximum of 5 files.";
+                        this.selectedFiles = []; // Clear selection if over limit
+                        if (this.$refs.fileInput) { // Reset file input visually
+                            this.$refs.fileInput.value = '';
+                        }
+                        return;
+                    }
+                    this.selectedFiles = files;
+                },
+                async parseResumes() { // Changed method name to reflect multiple resumes
+                    if (this.selectedFiles.length === 0) {
+                        this.globalError = "Please select at least one PDF or DOCX file to parse.";
+                        return;
+                    }
+                    if (this.selectedFiles.length > 5) {
+                        this.globalError = "You can upload a maximum of 5 files.";
+                        return;
+                    }
+
+                    this.parsedOutput = null;
+                    this.globalError = null;
+                    this.isLoading = true;
+
+                    const formData = new FormData();
+                    this.selectedFiles.forEach(file => {
+                        formData.append('file', file); // Append each file under the same 'file' key
+                    });
+
+                    try {
+                        const response = await fetch(this.apiEndpoint, {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ message: 'Unknown server error' }));
+                            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        // Backend now returns an array of results
+                        this.parsedOutput = result;
+
+                    } catch (e) {
+                        console.error("Error parsing resumes:", e);
+                        this.globalError = `Failed to parse resumes: ${e.message}. Please ensure your Deno backend is running and reachable at "${this.apiEndpoint}".`;
+                    } finally {
+                        this.isLoading = false;
+                        // Optional: Clear selected files after successful (or failed) parsing
+                        this.selectedFiles = [];
+                        if (this.$refs.fileInput) {
+                            this.$refs.fileInput.value = ''; // Clear file input visually
+                        }
+                    }
+                }
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>
